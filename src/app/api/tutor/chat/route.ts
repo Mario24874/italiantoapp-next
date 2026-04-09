@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,17 @@ interface TutorPrefs {
 export async function POST(req: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
+
+  // Require active paid subscription (same rule as italianto.com)
+  const { data: sub } = await supabaseAdmin
+    .from('subscriptions')
+    .select('plan_type, status')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .neq('plan_type', 'free')
+    .maybeSingle()
+
+  if (!sub) return NextResponse.json({ error: 'Se requiere un plan de pago para usar el Tutor AI' }, { status: 403 })
 
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'AI non configurato' }, { status: 500 })
@@ -88,6 +100,14 @@ Regole fondamentali:
     const data = await response.json()
     const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
     if (!text) return NextResponse.json({ error: 'Nessuna risposta dal tutor' }, { status: 502 })
+
+    // Track usage (same RPC as italianto.com)
+    supabaseAdmin.rpc('increment_quota', {
+      p_user_id: userId,
+      p_column: 'tutor_minutes_used',
+      p_amount: 0.1,
+    }).catch(() => {})
+
     return NextResponse.json({ text })
   } catch (e) {
     console.error('[POST /api/tutor/chat]', e)
