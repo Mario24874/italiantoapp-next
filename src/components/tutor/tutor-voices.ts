@@ -17,7 +17,7 @@ export const TUTOR_VOICES: TutorVoice[] = [
     description: 'Mediterraneo, caldo',
     descriptionEs: 'Amigable y mediterráneo',
     avatar: '/tutor-Marco.png',
-    elevenlabsVoiceId: null,  // Set when you clone the voice: e.g. 'Yb9rQITgCX1VdXgAkbjM'
+    elevenlabsVoiceId: 'JBFqnCBsd6RMkjVDRZzb',  // George (ElevenLabs default)
     pitch: 0.8,
   },
   {
@@ -27,7 +27,7 @@ export const TUTOR_VOICES: TutorVoice[] = [
     description: 'Classico, chiaro',
     descriptionEs: 'Clásico y preciso',
     avatar: '/tutor-Giovanni.png',
-    elevenlabsVoiceId: null,
+    elevenlabsVoiceId: 'IKne3meq5aSn9XLyUdCD',  // Charlie (ElevenLabs default)
     pitch: 0.75,
   },
   {
@@ -37,7 +37,7 @@ export const TUTOR_VOICES: TutorVoice[] = [
     description: 'Dolce, rassicurante',
     descriptionEs: 'Dulce y alentadora',
     avatar: '/tutor-Giulia.png',
-    elevenlabsVoiceId: null,
+    elevenlabsVoiceId: 'Xb7hH8MSUJpSbSDYk0k2',  // Alice (ElevenLabs default)
     pitch: 1.1,
   },
   {
@@ -47,7 +47,7 @@ export const TUTOR_VOICES: TutorVoice[] = [
     description: 'Elegante, professionale',
     descriptionEs: 'Elegante y profesional',
     avatar: '/tutor-Francesca.png',
-    elevenlabsVoiceId: null,
+    elevenlabsVoiceId: 'XrExE9yKIg1WjnnlVkGX',  // Matilda (ElevenLabs default)
     pitch: 1.15,
   },
 ]
