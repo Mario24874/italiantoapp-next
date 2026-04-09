@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
 
   // Require active paid subscription (same rule as italianto.com)
+  const supabaseAdmin = getSupabaseAdmin()
   const { data: sub } = await supabaseAdmin
     .from('subscriptions')
     .select('plan_type, status')
