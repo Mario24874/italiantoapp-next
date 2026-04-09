@@ -5,8 +5,8 @@ FROM node:22-alpine AS base
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
-COPY package.json ./
-RUN npm install --legacy-peer-deps
+COPY package.json package-lock.json* ./
+RUN npm ci --legacy-peer-deps
 
 # ─── Builder ─────────────────────────────────────────────────────────────────
 FROM base AS builder
