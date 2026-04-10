@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
+import { PwaBanners } from '@/components/pwa-banners'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -29,11 +30,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <meta name="mobile-web-app-capable" content="yes" />
           <link rel="apple-touch-icon" href="/icon-192.png" />
           {/* Dark mode flash prevention */}
-          <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('theme');if(!t)t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(t==='dark')document.documentElement.classList.add('dark');})();` }} />
-          {/* PWA service worker */}
-          <script dangerouslySetInnerHTML={{ __html: `if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js');});}` }} />
+          <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');if(!t)t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})();` }} />
         </head>
-        <body>{children}</body>
+        <body>
+          <PwaBanners />
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   )

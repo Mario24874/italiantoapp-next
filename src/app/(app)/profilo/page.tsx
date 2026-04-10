@@ -18,7 +18,7 @@ export default function ProfiloPage() {
     const next = !dark
     setDark(next)
     document.documentElement.classList.toggle('dark', next)
-    localStorage.setItem('theme', next ? 'dark' : 'light')
+    try { localStorage.setItem('theme', next ? 'dark' : 'light') } catch {}
   }
 
   const handleSignOut = () => signOut({ redirectUrl: '/sign-in' })
