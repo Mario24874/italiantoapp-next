@@ -1,11 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
 
-const url  = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Both clients are lazy (called at request time, not at module load time).
+// This prevents Next.js from throwing during the build phase when
+// NEXT_PUBLIC_SUPABASE_URL is not available in the Docker builder stage.
 
-export const supabase = createClient(url, anon)
+export function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  )
+}
 
-// Lazy admin client — only instantiated at request time, not at build time
 export function getSupabaseAdmin() {
-  return createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
 }
