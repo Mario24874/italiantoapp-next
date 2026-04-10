@@ -102,12 +102,14 @@ Regole fondamentali:
     const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
     if (!text) return NextResponse.json({ error: 'Nessuna risposta dal tutor' }, { status: 502 })
 
-    // Track usage (same RPC as italianto.com)
-    supabaseAdmin.rpc('increment_quota', {
-      p_user_id: userId,
-      p_column: 'tutor_minutes_used',
-      p_amount: 0.1,
-    }).catch(() => {})
+    // Track usage (fire-and-forget, don't block response)
+    try {
+      await supabaseAdmin.rpc('increment_quota', {
+        p_user_id: userId,
+        p_column: 'tutor_minutes_used',
+        p_amount: 0.1,
+      })
+    } catch {}
 
     return NextResponse.json({ text })
   } catch (e) {
