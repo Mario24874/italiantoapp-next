@@ -1,12 +1,8 @@
-const CACHE = 'italianto-app-v3'
-const PRECACHE = ['/', '/tutor', '/conjugador', '/traductor', '/pronuncia', '/profilo']
+const CACHE = 'italianto-static-v1'
 
 self.addEventListener('install', e => {
-  // Do NOT skipWaiting here — let the client decide when to activate
-  // (enables "update available" banner UX)
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(PRECACHE))
-  )
+  // Skip precaching pages — Clerk redirects them and breaks the SW install
+  self.skipWaiting()
 })
 
 self.addEventListener('activate', e => {
@@ -18,21 +14,55 @@ self.addEventListener('activate', e => {
 })
 
 self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return
-  if (!e.request.url.startsWith('http')) return
-  if (e.request.url.includes('/api/')) return
-  e.respondWith(
-    caches.match(e.request).then(cached => cached ?? fetch(e.request).then(res => {
-      if (res.ok && !res.redirected) {
-        const clone = res.clone()
-        caches.open(CACHE).then(c => c.put(e.request, clone))
-      }
-      return res
-    }))
-  )
+  const { request } = e
+  const url = new URL(request.url)
+
+  // Only handle GET over http(s)
+  if (request.method !== 'GET') return
+  if (!url.protocol.startsWith('http')) return
+
+  // Navigation requests: always go to network (Clerk manages auth redirects)
+  if (request.mode === 'navigate') return
+
+  // API routes: skip SW
+  if (url.pathname.startsWith('/api/')) return
+
+  // Only cache Next.js static assets (immutable, safe to cache-first)
+  if (url.pathname.startsWith('/_next/static/')) {
+    e.respondWith(
+      caches.match(request).then(cached => {
+        if (cached) return cached
+        return fetch(request, { redirect: 'follow' }).then(res => {
+          if (res.ok && res.status === 200) {
+            caches.open(CACHE).then(c => c.put(request, res.clone()))
+          }
+          return res
+        })
+      })
+    )
+    return
+  }
+
+  // Public assets (icons, manifest, images): network-first, cache fallback
+  if (
+    url.pathname.startsWith('/icons/') ||
+    url.pathname.startsWith('/avatars/') ||
+    url.pathname === '/manifest.json' ||
+    url.pathname === '/favicon.ico'
+  ) {
+    e.respondWith(
+      fetch(request, { redirect: 'follow' })
+        .then(res => {
+          if (res.ok && res.status === 200) {
+            caches.open(CACHE).then(c => c.put(request, res.clone()))
+          }
+          return res
+        })
+        .catch(() => caches.match(request))
+    )
+  }
 })
 
-// When the client posts SKIP_WAITING, activate the new SW immediately
 self.addEventListener('message', e => {
   if (e.data === 'SKIP_WAITING') self.skipWaiting()
 })
