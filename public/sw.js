@@ -1,7 +1,6 @@
-const CACHE = 'italianto-static-v1'
+const CACHE = 'italianto-static-v2'
 
 self.addEventListener('install', e => {
-  // Skip precaching pages — Clerk redirects them and breaks the SW install
   self.skipWaiting()
 })
 
@@ -17,9 +16,9 @@ self.addEventListener('fetch', e => {
   const { request } = e
   const url = new URL(request.url)
 
-  // Only handle GET over http(s)
+  // Only handle GET over http(s) — skip chrome-extension:// and other schemes
   if (request.method !== 'GET') return
-  if (!url.protocol.startsWith('http')) return
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return
 
   // Navigation requests: always go to network (Clerk manages auth redirects)
   if (request.mode === 'navigate') return
@@ -27,8 +26,8 @@ self.addEventListener('fetch', e => {
   // API routes: skip SW
   if (url.pathname.startsWith('/api/')) return
 
-  // Only cache Next.js static assets (immutable, safe to cache-first)
-  if (url.pathname.startsWith('/_next/static/')) {
+  // Only cache Next.js static assets under /app (immutable, safe to cache-first)
+  if (url.pathname.startsWith('/app/_next/static/')) {
     e.respondWith(
       caches.match(request).then(cached => {
         if (cached) return cached
@@ -45,10 +44,10 @@ self.addEventListener('fetch', e => {
 
   // Public assets (icons, manifest, images): network-first, cache fallback
   if (
-    url.pathname.startsWith('/icons/') ||
-    url.pathname.startsWith('/avatars/') ||
-    url.pathname === '/manifest.json' ||
-    url.pathname === '/favicon.ico'
+    url.pathname.startsWith('/app/icons/') ||
+    url.pathname.startsWith('/app/avatars/') ||
+    url.pathname === '/app/manifest.json' ||
+    url.pathname === '/app/favicon.ico'
   ) {
     e.respondWith(
       fetch(request, { redirect: 'follow' })

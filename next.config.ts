@@ -6,9 +6,10 @@ const nextConfig: NextConfig = {
   typescript: { ignoreBuildErrors: true },
   eslint: { ignoreDuringBuilds: true },
   images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: '**' },
-    ],
+    // unoptimized=true porque el app corre detrás de un proxy inverso (italianto.com/app).
+    // Next.js standalone intenta self-fetch usando el host header (italianto.com)
+    // en vez de localhost, causando "received null". Imágenes se sirven directamente.
+    unoptimized: true,
   },
 }
 
