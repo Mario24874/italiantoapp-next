@@ -122,7 +122,7 @@ export default function ProfiloPage() {
       </motion.button>
 
       <p className="text-center text-[10px] text-gray-300 dark:text-[#2a4a2a] pb-2">
-        Italianto App v1.0 · app.italianto.com
+        Italianto App v1.0 · italianto.com/app
       </p>
     </div>
   )
