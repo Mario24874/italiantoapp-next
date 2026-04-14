@@ -20,7 +20,7 @@ export function PwaBanners() {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
 
     // ── SW Update detection ─────────────────────────────────────────────────
-    navigator.serviceWorker.register('/sw.js').then(reg => {
+    navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' }).then(reg => {
       setSwReg(reg)
 
       const checkWaiting = () => {

@@ -7,6 +7,10 @@ export const metadata: Metadata = {
   title: 'Italianto App',
   description: 'Impara l\'italiano con il tuo tutor AI — Aprende italiano con tu tutor de IA',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/icon-192.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -28,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <html lang="es">
         <head>
           <meta name="mobile-web-app-capable" content="yes" />
-          <link rel="apple-touch-icon" href="/icon-192.png" />
+          <link rel="apple-touch-icon" href="/app/icon-192.png" />
           {/* Dark mode flash prevention */}
           <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');if(!t)t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})();` }} />
         </head>
