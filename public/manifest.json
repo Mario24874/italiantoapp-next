@@ -2,7 +2,8 @@
   "name": "Italianto App",
   "short_name": "Italianto",
   "description": "Impara l'italiano con il tuo tutor AI — Aprende italiano con tu tutor de IA",
-  "start_url": "/tutor",
+  "start_url": "/app/tutor",
+  "scope": "/app/",
   "display": "standalone",
   "background_color": "#f5f7f5",
   "theme_color": "#2e7d32",
@@ -10,8 +11,8 @@
   "categories": ["education"],
   "lang": "it",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/app/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/app/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ],
   "prefer_related_applications": false
 }
