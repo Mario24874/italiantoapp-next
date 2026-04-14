@@ -1,11 +1,12 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 
+// Next.js middleware receives pathname WITHOUT basePath, so patterns are basePath-relative
 const isPublic = createRouteMatcher([
   '/',
-  '/app/sign-in(.*)',
-  '/app/sign-up(.*)',
-  '/app/api/clerk(.*)',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/api/clerk(.*)',
 ])
 
 export default clerkMiddleware(async (auth, req) => {
@@ -21,8 +22,9 @@ export default clerkMiddleware(async (auth, req) => {
   if (!isPublic(req)) {
     const { userId } = await auth()
     if (!userId) {
+      // pathname is basePath-relative (e.g. /tutor), prepend basePath for full URL
       const signInUrl = new URL('/app/sign-in', req.nextUrl.origin)
-      signInUrl.searchParams.set('redirect_url', req.nextUrl.pathname)
+      signInUrl.searchParams.set('redirect_url', '/app' + req.nextUrl.pathname)
       return NextResponse.redirect(signInUrl)
     }
   }
