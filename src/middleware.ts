@@ -3,9 +3,9 @@ import { NextResponse } from 'next/server'
 
 const isPublic = createRouteMatcher([
   '/',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/api/clerk(.*)',
+  '/app/sign-in(.*)',
+  '/app/sign-up(.*)',
+  '/app/api/clerk(.*)',
 ])
 
 export default clerkMiddleware(async (auth, req) => {
@@ -18,7 +18,14 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.redirect(`https://italianto.com/app${path}`, 301)
   }
 
-  if (!isPublic(req)) await auth.protect()
+  if (!isPublic(req)) {
+    const { userId } = await auth()
+    if (!userId) {
+      const signInUrl = new URL('/app/sign-in', req.nextUrl.origin)
+      signInUrl.searchParams.set('redirect_url', req.nextUrl.pathname)
+      return NextResponse.redirect(signInUrl)
+    }
+  }
 })
 
 export const config = {
