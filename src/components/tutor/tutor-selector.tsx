@@ -1,19 +1,61 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { TUTOR_VOICES, type TutorVoice } from './tutor-voices'
+import { TUTOR_VOICES } from './tutor-voices'
+
+interface TutorRow {
+  slug: string
+  name: string
+  gender: 'male' | 'female'
+  description: string
+  description_es: string
+  avatar_url: string | null
+}
+
+function getAvatar(tutor: TutorRow): string {
+  if (tutor.avatar_url) return tutor.avatar_url
+  const fallback = TUTOR_VOICES.find(v => v.slug === tutor.slug)
+  return fallback?.avatar ?? '/tutor-Marco.png'
+}
 
 export function TutorSelector() {
   const router = useRouter()
   const [selected, setSelected] = useState<string | null>(null)
+  const [tutors, setTutors] = useState<TutorRow[]>([])
 
-  const handleSelect = (tutor: TutorVoice) => {
-    setSelected(tutor.slug)
-    setTimeout(() => router.push(`/tutor/${tutor.slug}`), 200)
+  useEffect(() => {
+    fetch('/app/api/tutors')
+      .then(r => r.json())
+      .then((data: TutorRow[]) => {
+        if (Array.isArray(data) && data.length > 0) setTutors(data)
+        else setTutors(TUTOR_VOICES.map(v => ({
+          slug: v.slug,
+          name: v.name,
+          gender: v.gender,
+          description: v.description,
+          description_es: v.descriptionEs,
+          avatar_url: null,
+        })))
+      })
+      .catch(() => {
+        setTutors(TUTOR_VOICES.map(v => ({
+          slug: v.slug,
+          name: v.name,
+          gender: v.gender,
+          description: v.description,
+          description_es: v.descriptionEs,
+          avatar_url: null,
+        })))
+      })
+  }, [])
+
+  const handleSelect = (slug: string) => {
+    setSelected(slug)
+    setTimeout(() => router.push(`/tutor/${slug}`), 200)
   }
 
   return (
@@ -34,7 +76,7 @@ export function TutorSelector() {
 
       {/* Grid 2x2 */}
       <div className="grid grid-cols-2 gap-3">
-        {TUTOR_VOICES.map((tutor, i) => {
+        {tutors.map((tutor, i) => {
           const isSelected = selected === tutor.slug
           return (
             <motion.button
@@ -42,7 +84,7 @@ export function TutorSelector() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06 }}
-              onClick={() => handleSelect(tutor)}
+              onClick={() => handleSelect(tutor.slug)}
               disabled={!!selected && !isSelected}
               className={cn(
                 'relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all',
@@ -60,7 +102,7 @@ export function TutorSelector() {
               )}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={tutor.avatar}
+                  src={getAvatar(tutor)}
                   alt={tutor.name}
                   className="size-full object-cover"
                   onError={e => {
