@@ -8,8 +8,8 @@ export const metadata: Metadata = {
   description: 'Impara l\'italiano con il tuo tutor AI — Aprende italiano con tu tutor de IA',
   manifest: '/manifest.json',
   icons: {
-    icon: '/favicon.ico',
-    apple: '/icon-192.png',
+    icon: '/app/favicon.ico',
+    apple: '/app/icon-192.png',
   },
   appleWebApp: {
     capable: true,

@@ -1,4 +1,4 @@
-const CACHE = 'italianto-static-v2'
+const CACHE = 'italianto-static-v3'
 
 self.addEventListener('install', e => {
   self.skipWaiting()
@@ -33,7 +33,8 @@ self.addEventListener('fetch', e => {
         if (cached) return cached
         return fetch(request, { redirect: 'follow' }).then(res => {
           if (res.ok && res.status === 200) {
-            caches.open(CACHE).then(c => c.put(request, res.clone()))
+            const cloned = res.clone()
+            caches.open(CACHE).then(c => c.put(request, cloned))
           }
           return res
         })
@@ -53,7 +54,8 @@ self.addEventListener('fetch', e => {
       fetch(request, { redirect: 'follow' })
         .then(res => {
           if (res.ok && res.status === 200) {
-            caches.open(CACHE).then(c => c.put(request, res.clone()))
+            const cloned = res.clone()
+            caches.open(CACHE).then(c => c.put(request, cloned))
           }
           return res
         })
