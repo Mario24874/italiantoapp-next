@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
 import { PwaBanners } from '@/components/pwa-banners'
+import SplashScreen from '@/components/splash-screen'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -36,7 +37,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');if(!t)t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})();` }} />
       </head>
       <body>
-        <ClerkProvider>
+        <ClerkProvider
+          signInUrl="/app/sign-in"
+          signUpUrl="/app/sign-in"
+          signInFallbackRedirectUrl="/app/tutor"
+          signUpFallbackRedirectUrl="/app/tutor"
+        >
+          <SplashScreen />
           <PwaBanners />
           {children}
         </ClerkProvider>
