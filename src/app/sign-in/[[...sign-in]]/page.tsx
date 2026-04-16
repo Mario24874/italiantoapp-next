@@ -1,4 +1,4 @@
-import { SignIn } from '@clerk/nextjs'
+import { SignIn, ClerkLoading, ClerkLoaded } from '@clerk/nextjs'
 
 export default function SignInPage() {
   return (
@@ -9,6 +9,15 @@ export default function SignInPage() {
         <h1 className="text-2xl font-bold text-italianto-800 dark:text-italianto-300">Italianto</h1>
         <p className="text-sm text-gray-400 dark:text-[#4a7a4a] mt-1">Impara l&apos;italiano con l&apos;IA</p>
       </div>
+      <ClerkLoading>
+        <div className="w-full max-w-sm space-y-3 animate-pulse">
+          <div className="h-10 rounded-2xl bg-[#1e3a1e] w-full" />
+          <div className="h-10 rounded-2xl bg-[#1e3a1e] w-full" />
+          <div className="h-10 rounded-2xl bg-[#1e3a1e] w-full" />
+          <div className="h-12 rounded-2xl bg-italianto-700/40 w-full" />
+        </div>
+      </ClerkLoading>
+      <ClerkLoaded>
       <SignIn
         appearance={{
           elements: {
@@ -19,6 +28,7 @@ export default function SignInPage() {
         afterSignInUrl="/app/tutor"
         afterSignUpUrl="/app/tutor"
       />
+      </ClerkLoaded>
     </div>
   )
 }
