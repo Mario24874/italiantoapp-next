@@ -1,6 +1,6 @@
 {
   "name": "Italianto App",
-  "short_name": "Italianto",
+  "short_name": "Italianto App",
   "description": "Impara l'italiano con il tuo tutor AI — Aprende italiano con tu tutor de IA",
   "start_url": "/app/tutor",
   "scope": "/app/",
