@@ -22,8 +22,11 @@ export default clerkMiddleware(async (auth, req) => {
   if (!isPublic(req)) {
     const { userId } = await auth()
     if (!userId) {
-      // pathname is basePath-relative (e.g. /tutor), prepend basePath for full URL
-      const signInUrl = new URL('/app/sign-in', req.nextUrl.origin)
+      // Use canonical public URL to avoid leaking internal Docker hostnames on mobile
+      const appOrigin = new URL(
+        process.env.NEXT_PUBLIC_APP_URL || 'https://italianto.com'
+      ).origin
+      const signInUrl = new URL('/app/sign-in', appOrigin)
       signInUrl.searchParams.set('redirect_url', '/app' + req.nextUrl.pathname)
       return NextResponse.redirect(signInUrl)
     }
