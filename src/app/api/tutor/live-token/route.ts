@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const tokenRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${LIVE_MODEL}:generateEphemeralToken?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1alpha/models/${LIVE_MODEL}:generateEphemeralToken?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
