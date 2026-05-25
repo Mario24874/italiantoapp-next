@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from '@/lib/supabase'
 export const dynamic = 'force-dynamic'
 
 const LIVE_MODEL = process.env.GEMINI_LIVE_MODEL ?? 'gemini-3.1-flash-live-preview'
-const WS_BASE = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained'
+const WS_BASE = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent'
 
 export interface StudentPrefs {
   registro?: 'informale' | 'formale'
@@ -46,34 +46,7 @@ export async function POST(req: NextRequest) {
 
   const systemPrompt = buildSystemPrompt(tutorName, prefs, config)
 
-  const expireTime = new Date(Date.now() + 60 * 60 * 1000).toISOString()
-  let token: string
-  try {
-    const tokenRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1alpha/authTokens?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ expireTime }),
-      }
-    )
-    const td = await tokenRes.json()
-    if (!tokenRes.ok) {
-      console.error('[live-token] CreateAuthToken error', tokenRes.status, JSON.stringify(td))
-      return NextResponse.json(
-        { error: `Error al crear sesión (${tokenRes.status}): ${JSON.stringify(td)}` },
-        { status: 502 }
-      )
-    }
-    token = (td.token ?? td.name) as string
-    if (!token) {
-      console.error('[live-token] empty token', JSON.stringify(td))
-      return NextResponse.json({ error: 'Token vacío: ' + JSON.stringify(td) }, { status: 502 })
-    }
-  } catch (e) {
-    console.error('[live-token] fetch error', e)
-    return NextResponse.json({ error: 'Error de red al contactar Gemini' }, { status: 500 })
-  }
+  const token = apiKey
 
   try {
     await supabase.rpc('increment_quota', {
