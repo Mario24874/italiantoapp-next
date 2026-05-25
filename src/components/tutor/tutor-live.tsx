@@ -392,7 +392,7 @@ export function TutorLive({
         token: string; systemPrompt: string; wsBase: string; model: string
       }
 
-      const ws = new WebSocket(`${wsBase}?key=${token}`)
+      const ws = new WebSocket(`${wsBase}?access_token=${token}`)
       wsRef.current = ws
 
       ws.onopen = async () => {
@@ -405,10 +405,8 @@ export function TutorLive({
                 responseModalities: ['AUDIO'],
                 speechConfig: {
                   voiceConfig: { prebuiltVoiceConfig: { voiceName: geminiVoice } },
-                  languageCode: 'it-IT',
                 },
                 temperature: 0.75,
-                maxOutputTokens: 150,
               },
               systemInstruction: { parts: [{ text: systemPrompt }] },
               inputAudioTranscription: {},
