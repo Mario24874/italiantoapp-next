@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Mic, MicOff, PhoneOff, Settings, Volume2, VolumeX,
-  ArrowLeft, AlertCircle, Check, Phone,
+  ArrowLeft, AlertCircle, Check, Phone, Video, VideoOff,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -139,6 +139,8 @@ export function TutorLive({
   const [nameInput, setNameInput]   = useState(tutorName)
   const [error, setError]           = useState<string | null>(null)
   const [callDuration, setCallDuration] = useState(0)
+  const [cameraOn, setCameraOn]     = useState(false)
+  const [captureFlash, setCaptureFlash] = useState(false)
 
   const wsRef              = useRef<WebSocket | null>(null)
   const captureCtxRef      = useRef<AudioContext | null>(null)
@@ -146,6 +148,10 @@ export function TutorLive({
   const captureWorkletRef  = useRef<AudioWorkletNode | null>(null)
   const playbackWorkletRef = useRef<AudioWorkletNode | null>(null)
   const micStreamRef       = useRef<MediaStream | null>(null)
+  const videoRef           = useRef<HTMLVideoElement>(null)
+  const canvasRef          = useRef<HTMLCanvasElement>(null)
+  const videoStreamRef     = useRef<MediaStream | null>(null)
+  const captureIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const scrollRef          = useRef<HTMLDivElement>(null)
   const inCallRef          = useRef(false)
   const callTimerRef       = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -274,6 +280,62 @@ export function TutorLive({
     gain.connect(ctx.destination)
   }, [])
 
+  // ── Camera ────────────────────────────────────────────────────────────────
+  const startVideoFrames = useCallback(() => {
+    if (captureIntervalRef.current) return
+    captureIntervalRef.current = setInterval(() => {
+      if (!videoRef.current || !canvasRef.current) return
+      if (wsRef.current?.readyState !== WebSocket.OPEN) return
+      const video = videoRef.current
+      if (video.videoWidth === 0) return
+      const canvas = canvasRef.current
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      ctx.drawImage(video, 0, 0)
+      const b64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1]
+      if (b64 && b64.length > 300) {
+        wsRef.current!.send(JSON.stringify({
+          realtimeInput: { video: { mimeType: 'image/jpeg', data: b64 } },
+        }))
+        setCaptureFlash(true)
+        setTimeout(() => setCaptureFlash(false), 120)
+      }
+    }, 1000)
+  }, [])
+
+  const stopVideoFrames = useCallback(() => {
+    if (captureIntervalRef.current) { clearInterval(captureIntervalRef.current); captureIntervalRef.current = null }
+  }, [])
+
+  const startCamera = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      })
+      videoStreamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        videoRef.current.play().catch(() => {})
+      }
+      setCameraOn(true)
+      setError(null)
+      if (wsRef.current?.readyState === WebSocket.OPEN) startVideoFrames()
+    } catch {
+      setError('No se pudo acceder a la cámara.')
+    }
+  }, [startVideoFrames])
+
+  const stopCamera = useCallback(() => {
+    stopVideoFrames()
+    videoStreamRef.current?.getTracks().forEach(t => t.stop())
+    videoStreamRef.current = null
+    if (videoRef.current) videoRef.current.srcObject = null
+    setCameraOn(false)
+  }, [stopVideoFrames])
+
   // ── End call ──────────────────────────────────────────────────────────────
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const doEndCall = useCallback(() => {
@@ -292,8 +354,10 @@ export function TutorLive({
     playbackWorkletRef.current = null
     playbackCtxRef.current?.close(); playbackCtxRef.current = null
 
+    stopVideoFrames()
+
     if (callTimerRef.current) { clearInterval(callTimerRef.current); callTimerRef.current = null }
-  }, [])
+  }, [stopVideoFrames])
 
   useEffect(() => () => { doEndCall() }, [doEndCall])
 
@@ -362,6 +426,8 @@ export function TutorLive({
 
           await startAudioPlayback()
           await startAudioCapture()
+
+          if (cameraOn) startVideoFrames()
         } catch (err) {
           setError('Error en la configuración: ' + (err instanceof Error ? err.message : String(err)))
           doEndCall()
@@ -382,7 +448,7 @@ export function TutorLive({
       doEndCall()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefs, effectiveName, geminiVoice, startAudioCapture, startAudioPlayback, handleWsMessage])
+  }, [prefs, effectiveName, geminiVoice, cameraOn, startAudioCapture, startAudioPlayback, startVideoFrames, handleWsMessage])
 
   const formatDuration = (s: number) =>
     `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`
@@ -563,6 +629,25 @@ export function TutorLive({
         )}
       </div>
 
+      {/* Camera preview — always mounted so videoRef is valid */}
+      <div className={cn('relative overflow-hidden transition-all duration-300 mx-4', cameraOn ? 'block' : 'hidden')}>
+        <video ref={videoRef} className="w-full max-h-40 object-cover rounded-xl bg-black" muted playsInline />
+        <AnimatePresence>
+          {captureFlash && (
+            <motion.div initial={{ opacity: 0.5 }} animate={{ opacity: 0 }} transition={{ duration: 0.2 }}
+              className="absolute inset-0 bg-white rounded-xl pointer-events-none" />
+          )}
+        </AnimatePresence>
+        <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 rounded-full px-2 py-1">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+          </span>
+          <span className="text-white text-[10px] font-semibold tracking-wide">LIVE</span>
+        </div>
+      </div>
+      <canvas ref={canvasRef} className="hidden" />
+
       {/* Transcript */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 space-y-2 py-2 min-h-0">
         {messages.length === 0 && !inCall && (
@@ -623,6 +708,15 @@ export function TutorLive({
             {ttsEnabled ? <Mic size={18} /> : <MicOff size={18} />}
           </button>
         )}
+
+        <button onClick={() => { if (cameraOn) stopCamera(); else startCamera() }}
+          className={cn('size-12 rounded-full flex items-center justify-center border transition-colors',
+            cameraOn
+              ? 'border-italianto-500 text-italianto-600 dark:text-italianto-400 bg-italianto-50 dark:bg-italianto-900/30'
+              : 'border-[#d4e4d4] dark:border-[#1e3a1e] text-gray-400 dark:text-[#4a7a4a] hover:border-italianto-400 hover:text-italianto-600',
+          )}>
+          {cameraOn ? <Video size={18} /> : <VideoOff size={18} />}
+        </button>
       </div>
     </div>
   )
