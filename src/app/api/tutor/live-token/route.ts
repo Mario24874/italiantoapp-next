@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from '@/lib/supabase'
 export const dynamic = 'force-dynamic'
 
 const LIVE_MODEL = process.env.GEMINI_LIVE_MODEL ?? 'gemini-3.1-flash-live-preview'
-const WS_BASE = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained'
+const WS_BASE = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent'
 
 export interface StudentPrefs {
   registro?: 'informale' | 'formale'
@@ -46,39 +46,7 @@ export async function POST(req: NextRequest) {
 
   const systemPrompt = buildSystemPrompt(tutorName, prefs, config)
 
-  const now = new Date()
-  const expireTime = new Date(now.getTime() + 30 * 60 * 1000).toISOString()
-  const newSessionExpireTime = new Date(now.getTime() + 60 * 1000).toISOString()
-  let token: string
-  try {
-    const tokenRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1alpha/authTokens?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uses: 1, expireTime, newSessionExpireTime }),
-      }
-    )
-    const text = await tokenRes.text()
-    if (!tokenRes.ok) {
-      console.error('[live-token] authTokens error', tokenRes.status, text.slice(0, 400))
-      return NextResponse.json(
-        { error: `Error al crear sesión (${tokenRes.status}): ${text.slice(0, 200)}` },
-        { status: 502 }
-      )
-    }
-    let td: Record<string, unknown>
-    try { td = JSON.parse(text) } catch { td = {} }
-    token = (td.name ?? td.token) as string
-    if (!token) {
-      console.error('[live-token] unexpected response', text.slice(0, 400))
-      return NextResponse.json({ error: `Respuesta inesperada: ${text.slice(0, 200)}` }, { status: 502 })
-    }
-    console.log('[live-token] auth token ok:', String(token).slice(0, 30))
-  } catch (e) {
-    console.error('[live-token] fetch error', e)
-    return NextResponse.json({ error: 'Error de red al contactar Gemini' }, { status: 500 })
-  }
+  const token = apiKey
 
   try {
     await supabase.rpc('increment_quota', {

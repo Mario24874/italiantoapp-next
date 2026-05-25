@@ -392,7 +392,7 @@ export function TutorLive({
         token: string; systemPrompt: string; wsBase: string; model: string
       }
 
-      const ws = new WebSocket(`${wsBase}?access_token=${token}`)
+      const ws = new WebSocket(`${wsBase}?key=${token}`)
       wsRef.current = ws
 
       ws.onopen = async () => {
