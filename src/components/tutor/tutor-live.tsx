@@ -17,6 +17,7 @@ const GEMINI_VOICE: Record<string, string> = {
   francesca: 'Kore',
 }
 const DEFAULT_GEMINI_VOICE = 'Puck'
+const VALID_GEMINI_VOICES = new Set(['Puck','Charon','Aoede','Kore','Fenrir','Leda','Orus','Zephyr'])
 
 const AVATAR_IMAGES: Record<string, string> = {
   marco:     '/tutor-Marco.png',
@@ -158,7 +159,9 @@ export function TutorLive({
 
   const effectiveName = prefs.customName || tutorName
   const avatarSrc     = AVATAR_IMAGES[prefs.avatarId] ?? (_avatarUrl ?? '/default-avatar.png')
-  const geminiVoice   = _geminiVoice ?? GEMINI_VOICE[prefs.avatarId] ?? GEMINI_VOICE[tutorSlug] ?? DEFAULT_GEMINI_VOICE
+  const geminiVoice   = (_geminiVoice && VALID_GEMINI_VOICES.has(_geminiVoice))
+    ? _geminiVoice
+    : GEMINI_VOICE[prefs.avatarId] ?? GEMINI_VOICE[tutorSlug] ?? DEFAULT_GEMINI_VOICE
 
   const inCall       = callStatus !== 'idle'
   const isSpeaking   = callStatus === 'speaking'
