@@ -27,6 +27,13 @@ const AVATAR_IMAGES: Record<string, string> = {
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+interface TutorStats {
+  streak: number
+  totalSessions: number
+  totalMinutes: number
+  weekDays: Array<{ date: string; sessions: number; durationSecs: number }>
+}
+
 type CallStatus = 'idle' | 'connecting' | 'listening' | 'speaking'
 type AvatarId = 'marco' | 'giovanni' | 'giulia' | 'francesca'
 
@@ -63,6 +70,40 @@ export interface TutorLiveProps {
   tutorSlug: string
   avatarUrl: string | null
   geminiVoice?: string | null
+}
+
+// ── Weekly progress chart ─────────────────────────────────────────────────────
+const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+
+function WeeklyChart({ weekDays }: { weekDays: TutorStats['weekDays'] }) {
+  const maxSecs = Math.max(...weekDays.map(d => d.durationSecs), 1)
+  const todayStr = new Date().toISOString().slice(0, 10)
+  return (
+    <div className="flex items-end gap-1 h-9">
+      {weekDays.map(day => {
+        const pct = day.durationSecs > 0 ? Math.max(15, (day.durationSecs / maxSecs) * 100) : 0
+        const isToday = day.date === todayStr
+        const dayName = DAY_NAMES[new Date(day.date + 'T12:00:00').getDay()]
+        return (
+          <div key={day.date} className="flex flex-col items-center gap-0.5 flex-1">
+            <div className="flex items-end w-full" style={{ height: 28 }}>
+              <div
+                className={cn('w-full rounded-t-sm transition-all',
+                  day.durationSecs > 0
+                    ? isToday ? 'bg-italianto-500' : 'bg-italianto-700/60 dark:bg-italianto-600/50'
+                    : 'bg-[#d4e4d4]/40 dark:bg-[#1e3a1e]/40'
+                )}
+                style={{ height: pct > 0 ? `${pct}%` : 3 }}
+              />
+            </div>
+            <span className={cn('text-[8px] leading-none', isToday ? 'text-italianto-500 dark:text-italianto-400 font-bold' : 'text-gray-400 dark:text-[#3a5a3a]')}>
+              {dayName}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 // ── Equalizer bars ────────────────────────────────────────────────────────────
@@ -142,6 +183,8 @@ export function TutorLive({
   const [callDuration, setCallDuration] = useState(0)
   const [cameraOn, setCameraOn]     = useState(false)
   const [captureFlash, setCaptureFlash] = useState(false)
+  const [stats, setStats]           = useState<TutorStats | null>(null)
+  const [lastSession, setLastSession] = useState<{ duration: number; turns: number } | null>(null)
 
   const wsRef              = useRef<WebSocket | null>(null)
   const captureCtxRef      = useRef<AudioContext | null>(null)
@@ -156,6 +199,10 @@ export function TutorLive({
   const scrollRef          = useRef<HTMLDivElement>(null)
   const inCallRef          = useRef(false)
   const callTimerRef       = useRef<ReturnType<typeof setInterval> | null>(null)
+  const callStartRef       = useRef<number>(0)
+  const messagesRef        = useRef<Message[]>([])
+  const prefsRef           = useRef<StudentPrefs>(DEFAULT_PREFS)
+  const sessionSavedRef    = useRef(false)
 
   const effectiveName = prefs.customName || tutorName
   const avatarSrc     = AVATAR_IMAGES[prefs.avatarId] ?? (_avatarUrl ?? '/default-avatar.png')
@@ -166,6 +213,17 @@ export function TutorLive({
   const inCall       = callStatus !== 'idle'
   const isSpeaking   = callStatus === 'speaking'
   const isListening  = callStatus === 'listening'
+
+  useEffect(() => { prefsRef.current = prefs }, [prefs])
+  useEffect(() => { messagesRef.current = messages }, [messages])
+
+  const fetchStats = useCallback(() => {
+    fetch('/api/tutor/stats')
+      .then(r => r.json())
+      .then((data: TutorStats) => setStats(data))
+      .catch(() => {})
+  }, [])
+  useEffect(() => { fetchStats() }, [fetchStats])
 
   useEffect(() => {
     try {
@@ -199,7 +257,12 @@ export function TutorLive({
       data = JSON.parse(raw)
     } catch { return }
 
-    if (data?.setupComplete) { setCallStatus('listening'); return }
+    if (data?.setupComplete) {
+      callStartRef.current = Date.now()
+      sessionSavedRef.current = false
+      setCallStatus('listening')
+      return
+    }
 
     if (data?.error) {
       const msg = (data.error as Record<string, unknown>)?.message ?? 'Gemini error'
@@ -342,7 +405,14 @@ export function TutorLive({
   // ── End call ──────────────────────────────────────────────────────────────
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const doEndCall = useCallback(() => {
+    const duration = callStartRef.current > 0
+      ? Math.round((Date.now() - callStartRef.current) / 1000)
+      : 0
+    const turns = messagesRef.current.filter(m => m.role === 'assistant' && !m.partial).length
+    const currentPrefs = prefsRef.current
+
     inCallRef.current = false
+    callStartRef.current = 0
     setCallStatus('idle')
 
     wsRef.current?.close(); wsRef.current = null
@@ -360,7 +430,23 @@ export function TutorLive({
     stopVideoFrames()
 
     if (callTimerRef.current) { clearInterval(callTimerRef.current); callTimerRef.current = null }
-  }, [stopVideoFrames])
+
+    if (duration >= 30 && !sessionSavedRef.current) {
+      sessionSavedRef.current = true
+      setLastSession({ duration, turns })
+      fetch('/api/tutor/save-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          duration_secs: duration,
+          turns_count: turns,
+          nivel: currentPrefs.livello,
+          tutor_slug: tutorSlug,
+          source: 'app',
+        }),
+      }).then(() => fetchStats()).catch(() => {})
+    }
+  }, [stopVideoFrames, tutorSlug, fetchStats])
 
   useEffect(() => () => { doEndCall() }, [doEndCall])
 
@@ -651,6 +737,37 @@ export function TutorLive({
         </div>
       </div>
       <canvas ref={canvasRef} className="hidden" />
+
+      {/* Progress widget — visible only in idle state */}
+      {!inCall && stats && (
+        <div className="mx-4 mb-2 bg-[#f0f7f0] dark:bg-[#0d1a0d]/80 border border-[#d4e4d4] dark:border-[#1e3a1e] rounded-2xl p-3 space-y-2 shrink-0">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-semibold text-italianto-700 dark:text-italianto-400 uppercase tracking-wide">Il tuo progresso</span>
+            {stats.streak > 0 && (
+              <span className="text-[10px] font-bold text-amber-500 dark:text-amber-400">
+                🔥 {stats.streak} {stats.streak === 1 ? 'giorno' : 'giorni'}
+              </span>
+            )}
+          </div>
+          <WeeklyChart weekDays={stats.weekDays} />
+          <div className="flex gap-5 pt-0.5">
+            <div>
+              <p className="text-sm font-bold text-italianto-700 dark:text-italianto-300 leading-none">{stats.totalMinutes}</p>
+              <p className="text-[9px] text-gray-400 dark:text-[#3a5a3a] mt-0.5">min totali</p>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-italianto-700 dark:text-italianto-300 leading-none">{stats.totalSessions}</p>
+              <p className="text-[9px] text-gray-400 dark:text-[#3a5a3a] mt-0.5">sessioni</p>
+            </div>
+            {lastSession && (
+              <div className="ml-auto text-right">
+                <p className="text-[10px] text-italianto-600 dark:text-italianto-400 font-medium">Ultima: {formatDuration(lastSession.duration)}</p>
+                <p className="text-[9px] text-gray-400 dark:text-[#3a5a3a]">{lastSession.turns} scambi</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Transcript */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 space-y-2 py-2 min-h-0">

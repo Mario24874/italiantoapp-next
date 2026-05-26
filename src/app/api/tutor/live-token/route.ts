@@ -62,12 +62,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Error generando token Gemini: ${msg}` }, { status: 500 })
   }
 
-  try {
-    await supabase.rpc('increment_quota', {
-      p_user_id: userId, p_column: 'tutor_minutes_used', p_amount: 0,
-    })
-  } catch {}
-
   return NextResponse.json({ token, systemPrompt, wsBase: WS_BASE, model: LIVE_MODEL })
 }
 
