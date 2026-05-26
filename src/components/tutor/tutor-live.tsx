@@ -392,7 +392,7 @@ export function TutorLive({
         token: string; systemPrompt: string; wsBase: string; model: string
       }
 
-      const ws = new WebSocket(`${wsBase}?key=${token}`)
+      const ws = new WebSocket(`${wsBase}?access_token=${token}`)
       wsRef.current = ws
 
       ws.onopen = async () => {
@@ -403,10 +403,10 @@ export function TutorLive({
               model: `models/${model}`,
               generationConfig: {
                 responseModalities: ['AUDIO'],
+                temperature: 1.0,
                 speechConfig: {
                   voiceConfig: { prebuiltVoiceConfig: { voiceName: geminiVoice } },
                 },
-                thinkingConfig: { thinkingLevel: 'minimal' },
               },
               systemInstruction: { parts: [{ text: systemPrompt }] },
               inputAudioTranscription: {},
@@ -415,8 +415,11 @@ export function TutorLive({
                 automaticActivityDetection: {
                   disabled: false,
                   silenceDurationMs: silenceMs,
-                  prefixPaddingMs: 200,
+                  prefixPaddingMs: 500,
+                  endOfSpeechSensitivity: 'END_SENSITIVITY_UNSPECIFIED',
+                  startOfSpeechSensitivity: 'START_SENSITIVITY_UNSPECIFIED',
                 },
+                activityHandling: 'ACTIVITY_HANDLING_UNSPECIFIED',
                 turnCoverage: 'TURN_INCLUDES_ONLY_ACTIVITY',
               },
             },
