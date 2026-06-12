@@ -473,6 +473,11 @@ export function TutorLive({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tutorName: effectiveName, prefs }),
       })
+      if (tokenRes.status === 401) {
+        // Guest exploring the app — send to sign-in and come back here
+        window.location.href = '/app/sign-in?redirect_url=/app/tutor'
+        return
+      }
       if (!tokenRes.ok) {
         const err = await tokenRes.json().catch(() => ({}))
         throw new Error((err as Record<string, string>).error ?? `Token error ${tokenRes.status}`)

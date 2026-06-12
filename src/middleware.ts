@@ -2,11 +2,18 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 
 // Next.js middleware receives pathname WITHOUT basePath, so patterns are basePath-relative
+// Tool pages are public so visitors can explore the app without an account (like Dialoghi
+// Studio). API routes pass through because each one enforces auth itself and must answer
+// 401 JSON (not an HTML redirect) so the client can show a sign-in prompt.
 const isPublic = createRouteMatcher([
   '/',
   '/sign-in(.*)',
   '/sign-up(.*)',
-  '/api/clerk(.*)',
+  '/tutor(.*)',
+  '/conjugador(.*)',
+  '/traductor(.*)',
+  '/pronuncia(.*)',
+  '/api(.*)',
 ])
 
 export default clerkMiddleware(async (auth, req) => {

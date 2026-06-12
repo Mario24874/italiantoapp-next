@@ -35,6 +35,11 @@ export default function TraductorPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: input, source, target }),
       })
+      if (res.status === 401) {
+        // Guest exploring the app — send to sign-in and come back here
+        window.location.href = '/app/sign-in?redirect_url=/app/traductor'
+        return
+      }
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Errore di traduzione'); return }
       setOutput(data.translation)

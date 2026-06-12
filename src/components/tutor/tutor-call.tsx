@@ -223,6 +223,11 @@ export function TutorCall({ tutor }: { tutor: { slug: string; name: string } }) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: next, tutorName: effectiveName, tutorSlug: tutor.slug, prefs }),
       })
+      if (res.status === 401) {
+        // Guest exploring the app — send to sign-in and come back here
+        window.location.href = '/app/sign-in?redirect_url=/app/tutor'
+        return
+      }
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Errore del tutor'); setStatus('idle'); return }
       const assistantMsg: Message = { role: 'assistant', content: data.text }
