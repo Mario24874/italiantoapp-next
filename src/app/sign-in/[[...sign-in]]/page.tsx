@@ -19,6 +19,9 @@ export default function SignInPage() {
       </ClerkLoading>
       <ClerkLoaded>
       <SignIn
+        // Con basePath, Clerk infiere "/sign-in" pero el navegador está en
+        // "/app/sign-in"; sin path explícito el widget no monta (en silencio)
+        path="/app/sign-in"
         appearance={{
           elements: {
             rootBox: 'w-full max-w-sm',
