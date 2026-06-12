@@ -3,13 +3,13 @@ import { NextResponse } from 'next/server'
 
 // Next.js middleware receives pathname WITHOUT basePath, so patterns are basePath-relative
 // Tool pages are public so visitors can explore the app without an account (like Dialoghi
-// Studio). API routes pass through because each one enforces auth itself and must answer
+// Studio), limited to GUEST_LIMIT uses client/server-side. Tutor and profilo require
+// sign-in. API routes pass through because each one enforces auth itself and must answer
 // 401 JSON (not an HTML redirect) so the client can show a sign-in prompt.
 const isPublic = createRouteMatcher([
   '/',
   '/sign-in(.*)',
   '/sign-up(.*)',
-  '/tutor(.*)',
   '/conjugador(.*)',
   '/traductor(.*)',
   '/pronuncia(.*)',

@@ -219,8 +219,11 @@ export function TutorLive({
 
   const fetchStats = useCallback(() => {
     fetch('/api/tutor/stats')
-      .then(r => r.json())
-      .then((data: TutorStats) => setStats(data))
+      .then(r => (r.ok ? r.json() : null))
+      .then((data: TutorStats | null) => {
+        // Un body de error ({error}) sin weekDays rompería el render del widget
+        if (data && Array.isArray(data.weekDays)) setStats(data)
+      })
       .catch(() => {})
   }, [])
   useEffect(() => { fetchStats() }, [fetchStats])

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { GUEST_LIMIT } from '@/lib/guest-limit'
 
 export const dynamic = 'force-dynamic'
 
 const DEEPL_BASE = 'https://api-free.deepl.com/v2'
+const GUEST_COOKIE = 'guest_translate_uses'
 
 const LANG_MAP: Record<string, string> = {
   es: 'ES', it: 'IT', en: 'EN', fr: 'FR', de: 'DE', pt: 'PT',
@@ -11,7 +13,20 @@ const LANG_MAP: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
+
+  // Visitantes sin cuenta: GUEST_LIMIT traducciones de prueba, contadas en una
+  // cookie httpOnly (el localStorage del cliente es solo UX, esto es el límite real)
+  let guestUses = 0
+  if (!userId) {
+    guestUses = Number(req.cookies.get(GUEST_COOKIE)?.value ?? '0')
+    if (!Number.isFinite(guestUses) || guestUses < 0) guestUses = GUEST_LIMIT
+    if (guestUses >= GUEST_LIMIT) {
+      return NextResponse.json(
+        { error: 'Accedi per continuare a tradurre', code: 'guest_limit' },
+        { status: 401 },
+      )
+    }
+  }
 
   const apiKey = process.env.DEEPL_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'Traduttore non configurato' }, { status: 500 })
@@ -38,7 +53,16 @@ export async function POST(req: NextRequest) {
     }
     const data = await res.json()
     const translation: string = data?.translations?.[0]?.text ?? ''
-    return NextResponse.json({ translation })
+    const response = NextResponse.json({ translation })
+    if (!userId) {
+      response.cookies.set(GUEST_COOKIE, String(guestUses + 1), {
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 365,
+        path: '/',
+      })
+    }
+    return response
   } catch (e) {
     console.error('[POST /api/translate]', e)
     return NextResponse.json({ error: 'Errore di rete' }, { status: 500 })

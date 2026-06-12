@@ -1,9 +1,12 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { useUser } from '@clerk/nextjs'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Volume2, Mic, MicOff, RefreshCw, CheckCircle2, XCircle, Mic2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { guestUsesExhausted, recordGuestUse } from '@/lib/guest-limit'
+import { GuestGate } from '@/components/guest-gate'
 
 const WORD_CATEGORIES = {
   'Saluti': ['ciao', 'buongiorno', 'buonasera', 'arrivederci', 'prego', 'grazie', 'scusi', 'per favore'],
@@ -40,13 +43,28 @@ function scoreMatch(spoken: string, target: string): number {
 }
 
 export default function PronunciaPage() {
+  const { isLoaded, isSignedIn } = useUser()
   const [category, setCategory] = useState<Category>('Saluti')
   const [wordIdx, setWordIdx] = useState(0)
   const [isListening, setIsListening] = useState(false)
   const [score, setScore] = useState<number | null>(null)
   const [spokenText, setSpokenText] = useState('')
   const [streak, setStreak] = useState(0)
+  const [gated, setGated] = useState(false)
   const recogRef = useRef<{ stop: () => void } | null>(null)
+
+  const isGuest = isLoaded && !isSignedIn
+  useEffect(() => {
+    if (isGuest && guestUsesExhausted('pronuncia')) setGated(true)
+  }, [isGuest])
+
+  // Cada interacción (escuchar o grabar) consume una prueba de visitante
+  const tryGuestUse = useCallback(() => {
+    if (!isGuest) return true
+    if (guestUsesExhausted('pronuncia')) { setGated(true); return false }
+    recordGuestUse('pronuncia')
+    return true
+  }, [isGuest])
 
   const words = WORD_CATEGORIES[category]
   const currentWord = words[wordIdx]
@@ -62,6 +80,7 @@ export default function PronunciaPage() {
   }, [words.length])
 
   const startListening = useCallback(() => {
+    if (!tryGuestUse()) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SR) { alert('Riconoscimento vocale non supportato. Usa Chrome o Edge.'); return }
@@ -83,7 +102,7 @@ export default function PronunciaPage() {
     r.start()
     setIsListening(true)
     setScore(null); setSpokenText('')
-  }, [currentWord])
+  }, [currentWord, tryGuestUse])
 
   const stopListening = () => { recogRef.current?.stop(); setIsListening(false) }
 
@@ -109,6 +128,9 @@ export default function PronunciaPage() {
         )}
       </div>
 
+      {/* Límite de pruebas para visitantes */}
+      {gated && <GuestGate tool="pronuncia" />}
+
       {/* Category tabs */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         {Object.keys(WORD_CATEGORIES).map(c => (
@@ -133,13 +155,13 @@ export default function PronunciaPage() {
 
         <div className="flex justify-center gap-3">
           <button
-            onClick={() => playTTS(currentWord)}
+            onClick={() => { if (tryGuestUse()) playTTS(currentWord) }}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-italianto-50 dark:bg-[#0d2a0d] border border-italianto-200 dark:border-[#1e4a1e] text-italianto-700 dark:text-italianto-400 text-sm font-medium hover:bg-italianto-100 dark:hover:bg-[#132213] transition-colors"
           >
             <Volume2 size={15} /> Ascolta
           </button>
           <button
-            onClick={() => playTTS(currentWord, 0.8)}
+            onClick={() => { if (tryGuestUse()) playTTS(currentWord, 0.8) }}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 dark:bg-[#0d1a0d] border border-[#d4e4d4] dark:border-[#1e3a1e] text-gray-500 dark:text-[#4a7a4a] text-sm hover:bg-gray-100 dark:hover:bg-[#132213] transition-colors"
           >
             🐢 Lento

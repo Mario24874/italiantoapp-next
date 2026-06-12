@@ -1,9 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useUser } from '@clerk/nextjs'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeftRight, Copy, Loader2, Languages } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { guestUsesExhausted, recordGuestUse } from '@/lib/guest-limit'
+import { GuestGate } from '@/components/guest-gate'
 
 const LANGS = [
   { code: 'es', label: 'Español' },
@@ -13,6 +16,7 @@ const LANGS = [
 ]
 
 export default function TraductorPage() {
+  const { isLoaded, isSignedIn } = useUser()
   const [source, setSource] = useState('es')
   const [target, setTarget] = useState('it')
   const [input, setInput] = useState('')
@@ -20,6 +24,12 @@ export default function TraductorPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
+  const [gated, setGated] = useState(false)
+
+  const isGuest = isLoaded && !isSignedIn
+  useEffect(() => {
+    if (isGuest && guestUsesExhausted('traductor')) setGated(true)
+  }, [isGuest])
 
   const swap = () => {
     setSource(target); setTarget(source)
@@ -28,6 +38,7 @@ export default function TraductorPage() {
 
   const translate = async () => {
     if (!input.trim() || loading) return
+    if (isGuest && guestUsesExhausted('traductor')) { setGated(true); return }
     setLoading(true); setError(''); setOutput('')
     try {
       const res = await fetch('/api/translate', {
@@ -36,13 +47,14 @@ export default function TraductorPage() {
         body: JSON.stringify({ text: input, source, target }),
       })
       if (res.status === 401) {
-        // Guest exploring the app — send to sign-in and come back here
-        window.location.href = '/app/sign-in?redirect_url=/app/traductor'
+        // Visitante que agotó las pruebas (límite del servidor) — mostrar gate
+        setGated(true)
         return
       }
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Errore di traduzione'); return }
       setOutput(data.translation)
+      if (isGuest) recordGuestUse('traductor')
     } catch {
       setError('Errore di rete')
     } finally {
@@ -67,6 +79,9 @@ export default function TraductorPage() {
         </h1>
         <p className="text-xs text-gray-400 dark:text-[#4a7a4a] mt-0.5">Powered by DeepL</p>
       </div>
+
+      {/* Límite de pruebas para visitantes */}
+      {gated && <GuestGate tool="traductor" />}
 
       {/* Language selector */}
       <div className="flex items-center gap-2">

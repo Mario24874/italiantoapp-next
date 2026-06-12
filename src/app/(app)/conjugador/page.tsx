@@ -1,27 +1,39 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useUser } from '@clerk/nextjs'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, BookOpen, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { conjugate, TENSE_LABELS, PRONOUNS, PRONOUN_LABELS, type VerbTense } from '@/lib/conjugation'
+import { guestUsesExhausted, recordGuestUse } from '@/lib/guest-limit'
+import { GuestGate } from '@/components/guest-gate'
 
 const TENSES = Object.keys(TENSE_LABELS) as VerbTense[]
 
 const QUICK_VERBS = ['essere', 'avere', 'fare', 'andare', 'dire', 'venire', 'potere', 'volere', 'sapere', 'dovere']
 
 export default function ConjugadorPage() {
+  const { isLoaded, isSignedIn } = useUser()
   const [verb, setVerb] = useState('')
   const [tense, setTense] = useState<VerbTense>('presente')
   const [result, setResult] = useState<ReturnType<typeof conjugate> | null>(null)
   const [error, setError] = useState('')
+  const [gated, setGated] = useState(false)
+
+  const isGuest = isLoaded && !isSignedIn
+  useEffect(() => {
+    if (isGuest && guestUsesExhausted('conjugador')) setGated(true)
+  }, [isGuest])
 
   const handleConjugate = (v = verb) => {
     const trimmed = v.trim()
     if (!trimmed) return
+    if (isGuest && guestUsesExhausted('conjugador')) { setGated(true); return }
     setError('')
     try {
       setResult(conjugate(trimmed, tense))
+      if (isGuest) recordGuestUse('conjugador')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Errore sconosciuto')
       setResult(null)
@@ -40,6 +52,9 @@ export default function ConjugadorPage() {
         </h1>
         <p className="text-xs text-gray-400 dark:text-[#4a7a4a] mt-0.5">Inserisci un verbo italiano</p>
       </div>
+
+      {/* Límite de pruebas para visitantes */}
+      {gated && <GuestGate tool="conjugador" />}
 
       {/* Input */}
       <div className="flex gap-2">
