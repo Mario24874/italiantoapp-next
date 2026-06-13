@@ -3,6 +3,7 @@ import { ClerkProvider } from '@clerk/nextjs'
 import { PwaBanners } from '@/components/pwa-banners'
 import SplashScreen from '@/components/splash-screen'
 import { CookieCheck } from '@/components/cookie-check'
+import { PageViewTracker } from '@/components/analytics/page-view-tracker'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           signUpFallbackRedirectUrl="/app/tutor"
         >
           <CookieCheck />
+          <PageViewTracker />
           <SplashScreen />
           <PwaBanners />
           {children}
