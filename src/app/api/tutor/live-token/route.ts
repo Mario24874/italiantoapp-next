@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { GoogleGenAI } from '@google/genai'
+import { fallbackKey, errorSuggestsFallback } from '@/lib/gemini'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,16 +48,26 @@ export async function POST(req: NextRequest) {
 
   const systemPrompt = buildSystemPrompt(tutorName, prefs, config)
 
-  const genai = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: 'v1alpha' } })
   const expireTime = new Date(Date.now() + 30 * 60 * 1000).toISOString()
+  const createToken = async (key: string) => {
+    const genai = new GoogleGenAI({ apiKey: key, httpOptions: { apiVersion: 'v1alpha' } })
+    const authToken = await genai.authTokens.create({ config: { uses: 1, expireTime } })
+    if (!authToken.name) throw new Error('Empty token name from Gemini auth')
+    return authToken.name
+  }
 
   let token: string
   try {
-    const authToken = await genai.authTokens.create({
-      config: { uses: 1, expireTime },
-    })
-    if (!authToken.name) throw new Error('Empty token name from Gemini auth')
-    token = authToken.name
+    try {
+      token = await createToken(apiKey)
+    } catch (err) {
+      // Solo si el fallo es de cuota/facturación/clave/servicio se prueba la clave gratuita
+      const fb = fallbackKey()
+      const m = err instanceof Error ? err.message : String(err)
+      if (!fb || !errorSuggestsFallback(m)) throw err
+      console.warn('[gemini] live-token con la clave de respaldo:', m.slice(0, 160))
+      token = await createToken(fb)
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ error: `Error generando token Gemini: ${msg}` }, { status: 500 })
